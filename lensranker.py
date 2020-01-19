@@ -44,110 +44,67 @@ class MainWindow(object):
         self.fullw = self.main.winfo_screenwidth()
         self.fullh = self.main.winfo_screenheight()
         self.zoomfac = (self.fullh - 275) / 456
-    
         self._resamp = tk.BooleanVar()
-        
         self._df = self._get_images()
         self.current_index = 0
-    
         self.current_im = self._next_image()
-        print(self.current_index)
-        
+
+        #sets up canvas object for displaying images and displays the first image
         self._canvas = tk.Canvas(self.main)
         self._canvas.configure(background = 'grey')
         self._image_on_canvas = self._canvas.create_image(self.fullw // 2, \
                 self.fullh//2 - 130, anchor = 'center', image = self.current_im)
         self._canvas.pack(fill = 'both', anchor = 'center', side = 'top', \
             expand = True)
-    
+
+        #sets up frame object for organizing buttons and other UI widgets
         self._frame = tk.Frame(self.main)
         self._frame.pack(side='bottom')
-            
+
+        #sets up entry object for scoring    
         self._txt = tk.Entry(self._frame, font = ("Arial", 40), \
                 width = round(7 * self.zoomfac))
         self._txt.grid(column = 0,row = 2, sticky = 'W')
         self._txt.focus()
-            
-            
-        def _submit():
-            '''
-            Saves score for current image
-            '''
-            print('SUBMITTING SCORES')
-            if self._txt.get() in ['', '0','1','2','3']:
-                text = self._txt.get()
-                if text == '':
-                    text = '0'
-                       
-                if pd.isna(self._df.iloc[self.current_index].item()):
-                    self._df.iloc[self.current_index] = text
-                else:
-                    self._df.iloc[self.current_index] = \
-                            str(self._df.iloc[self.current_index].item()) + '.' + text
-                self._txt.delete(0, "end")
-                self.save_file()
 
-                self.current_im = self._next_image()
-                self._canvas.itemconfig(self._image_on_canvas, \
-                    image = self.current_im)
-            else:
-                self._txt.delete(0, "end")
-                tkinter.messagebox.showwarning("Error", \
-                        "Invalid answer, please try again.")
-            text = ''
-            
-        self.main.bind('<Return>', lambda event : _submit())
-            
+        #binds the enter/return key to the score submitting function    
+        self.main.bind('<Return>', lambda event : self._submit())
+
+        #sets up submit button                                          
         self.button1 = tk.Button(self._frame, text = "submit", font = \
-                ("Arial", 30), command = _submit)
+                ("Arial", 30), command = self._submit)
         self.button1.grid(column = 1, columnspan = 2, row = 2, sticky = 'NSEW')
-            
-        def gobackone():
-            '''
-            Changes current image to the previous (non-resampled) image in self._df
-            '''
-            self.current_index -= 1
-            self.current_im = self._make_image(self.path + self._df.index[self.current_index])
-            self._canvas.itemconfig(self._image_on_canvas, image = self.current_im)
-            
-        self.main.bind('<Left>', lambda event : gobackone())
-            
+
+        #binds left arrow key to the going back one image    
+        self.main.bind('<Left>', lambda event : self._gobackone())
+
+        #sets up the go back one button    
         self.button2 = tk.Button(self._frame, text = "←", font = ("Arial", 30), \
-                command = gobackone)
+                command = self._gobackone)
         self.button2.grid(column = 0, row = 4, sticky = 'W')
-        
-        def goforwardone():
-            '''
-            Changes current image to the next (non-resampled) image in self._df
-            '''
-            self.current_index += 1
-            self.current_im = self._make_image(self.path + self._df.index[self.current_index])
-            self._canvas.itemconfig(self._image_on_canvas, image = self.current_im)
-    
-        self.main.bind('<Right>', lambda event : goforwardone())
-        
+
+        #binds right arrow key to the going forward one image
+        self.main.bind('<Right>', lambda event : self._goforwardone())
+
+        #sets up the go forward one button 
         self.button3 = tk.Button(self._frame, text = "→", font = ("Arial", 30), \
-                command = goforwardone)
+                command = self._goforwardone)
         self.button3.grid(column = 2, row = 4, sticky = 'E')
-        
+
+        #sets up another frame object for holding other options (things like
+        #   checkboxes and dropdowns which control backend functionality)
         self.optionframe = tk.Frame(self._frame)
         self.optionframe.grid(column = 1, row = 4, sticky='NSEW')
-        
+
+        #sets up checkbutton for optional resampling
         self.resample_check = tk.Checkbutton(self.optionframe, \
                 text = 'resample', var = self._resamp, onvalue = True, \
                 offvalue = False, font = ('Arial', 15))
         self.resample_check.pack(side = 'left', anchor = 'w', padx = 20)
-            
-        def _callback():
-            '''
-            Overwrites the (x) button's default functionality so that it asks the
-            user before closing the application
-            '''
-            if tkinter.messagebox.askokcancel("Quit", "Do you really wish to quit?"):
-                self.save_file()
-                self.main.destroy()
-            
-        self.main.protocol("WM_DELETE_WINDOW", _callback)
+
+        #overwrites the usual exiting protocol with a user prompt to ensure no
+        #   accidental exits occur
+        self.main.protocol("WM_DELETE_WINDOW", self._callback)
         
         
     def _find_images(self):
@@ -240,6 +197,67 @@ class MainWindow(object):
                     self._df.index[self.current_index]))
         
         
+    def _submit(self):
+        '''
+        Saves score for current image
+        '''
+        if self._txt.get() in ['', '0','1','2','3']:
+            text = self._txt.get()
+            if text == '':
+                text = '0'
+                   
+            if pd.isna(self._df.iloc[self.current_index].item()):
+                self._df.iloc[self.current_index] = text
+            else:
+                self._df.iloc[self.current_index] = \
+                        str(self._df.iloc[self.current_index].item()) + \
+                        '.' + text
+            self._txt.delete(0, "end")
+            self.save_file()
+
+            self.current_im = self._next_image()
+            self._canvas.itemconfig(self._image_on_canvas, \
+                image = self.current_im)
+        else:
+            self._txt.delete(0, "end")
+            tkinter.messagebox.showwarning("Error", \
+                    "Invalid answer, please try again.")
+        
+        
+    def _gobackone(self):
+        '''
+        Changes current image to the previous (non-resampled) image
+        in self._df.
+        '''
+        self.current_index -= 1
+        self.current_im = self._make_image(self.path + \
+                self._df.index[self.current_index])
+        self._canvas.itemconfig(self._image_on_canvas, \
+                image = self.current_im)
+
+
+    def _goforwardone(self):
+        '''
+        Changes current image to the next (non-resampled) image in self._df
+        '''
+        self.current_index += 1
+        self.current_im = self._make_image(self.path + \
+                self._df.index[self.current_index])
+        self._canvas.itemconfig(self._image_on_canvas, \
+                image = self.current_im)
+
+
+    def _callback(self):
+        '''
+        Overwrites the (x) button's default functionality so that it asks the
+        user before closing the application
+        '''
+        if tkinter.messagebox.askokcancel("Quit", \
+                "Do you really wish to quit?"):
+            self.save_file()
+            self.main.destroy()
+        
+        
     def save_file(self):
         '''
         Saves current dataframe into path/outfile.txt
@@ -247,16 +265,15 @@ class MainWindow(object):
         save = open(self.outfile, 'w')
         save.write(self._df.to_csv().replace(',', ' ')[6:])
         save.close()
-
-
+        
+        
     def execute(self):
         '''
         Displays main window to user, activates bindings
         '''
-        
         self.main.mainloop()
-                
-        
+
+    
 if __name__ == '__main__':
     ### Read Arguments
     # Set up argument parser - Generic parameters
@@ -285,4 +302,5 @@ if __name__ == '__main__':
     
     outfile = arglist['filename']
     
-    MainWindow(tk.Tk(), path = path, imtype = imtype, outfile = outfile).execute()
+    MainWindow(tk.Tk(), path = path, imtype = imtype, \
+            outfile = outfile).execute()
