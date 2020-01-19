@@ -23,10 +23,13 @@ class MainWindow(object):
             outfile (string): filename of text file for saving data
         '''
         if path == '':
-            self.path = os.getcwd() + '/'
+            self.path = os.getcwd()
             
         else:
-            self.path = path + '/'
+            self.path = path
+
+        if self.path[-1] != '/':
+            self.path = self.path + '/'
         
         self.imtype = imtype
         self.outfile = outfile
@@ -248,35 +251,38 @@ class MainWindow(object):
 
     def execute(self):
         '''
-        Sets certain parameters based on user provided arguments when
-            lensranker.py is run from the terminal
+        Displays main window to user, activates bindings
         '''
-        ### Read Arguments
-        # Set up argument parser - Generic parameters
-        parser = argparse.ArgumentParser(description="Lens Ranker")
-        parser.add_argument('-p', '--path', default = '', type = str,
-                            help = 'path to directory containing data to be ranked\
-                            (also creates the .txt file there')
-        parser.add_argument('imtype', default = 'jpg', type = str, nargs='?',
-                            help = 'input files pathname',)
-        parser.add_argument('outfile', default = 'lensrankings.txt', type = str, nargs='?',
-                            help = 'file name for the .txt file (if no file of this name exists, one will\
-                            be created')
-
-        args = parser.parse_args()
-        self.arglist=vars(args)
-        print(self.arglist)
-        if self.arglist['path'] == '':
-            self.path = os.getcwd() + '/'
-        else:
-            self.path = self.arglist['path'] + '/'
-            
-        self.imtype = self.arglist['imtype']
-        
-        self.outfile = self.arglist['outfile']
         
         self.main.mainloop()
                 
         
 if __name__ == '__main__':
-    MainWindow(tk.Tk()).execute()
+    ### Read Arguments
+    # Set up argument parser - Generic parameters
+    parser = argparse.ArgumentParser(description="Lens Ranker")
+    parser.add_argument('-p', '--path', default = '', type = str,
+            help = 'path to directory containing data to be ranked (also looks \
+            for the save file there)')
+    parser.add_argument('-f', '--filename', default = 'lensrankings.txt', \
+            type = str, help = 'file name for the .txt file (if no file of this \
+            name exists, one will be created')
+    parser.add_argument('--imtype', default = 'jpg', type = str, \
+            help = 'image type to be loaded in')
+
+    args = parser.parse_args()
+    arglist=vars(args)
+    
+    if arglist['path'] == '':
+        path = os.getcwd()
+    else:
+        path = arglist['path']
+        
+    if path[-1] != '/':
+        path = path + '/'
+        
+    imtype = arglist['imtype']
+    
+    outfile = arglist['filename']
+    
+    MainWindow(tk.Tk(), path = path, imtype = imtype, outfile = outfile).execute()
