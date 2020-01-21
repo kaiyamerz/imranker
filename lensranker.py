@@ -6,7 +6,7 @@ import pandas as pd
 import glob
 import argparse
 import os
-    
+
     
 class MainWindow(object):
     def __init__(self, main, path = '', imtype = 'jpg',
@@ -36,7 +36,12 @@ class MainWindow(object):
 
         #sets up main tk.Tk() object
         self.main = main
-        self.main.attributes('-zoomed', True)
+        
+        try:
+            self.main.wm_state('zoomed')
+        except:
+            self.main.attributes('-zoomed', True)
+            
         self.main.title("Strong Lensing Ranker")
         self.main.configure(background = 'grey')
         
@@ -83,18 +88,11 @@ class MainWindow(object):
                 command = self._gobackone)
         self.button2.grid(column = 0, row = 4, sticky = 'W')
 
-        #binds right arrow key to the going forward one image
-        self.main.bind('<Right>', lambda event : self._goforwardone())
-
-        #sets up the go forward one button 
-        self.button3 = tk.Button(self._frame, text = "→", font = ("Arial", 30), \
-                command = self._goforwardone)
-        self.button3.grid(column = 2, row = 4, sticky = 'E')
-
         #sets up another frame object for holding other options (things like
         #   checkboxes and dropdowns which control backend functionality)
         self.optionframe = tk.Frame(self._frame)
-        self.optionframe.grid(column = 1, row = 4, sticky='NSEW')
+        self.optionframe.grid(column = 1, columnspan = 2, row = 4, \
+                sticky='NSEW')
 
         #sets up checkbutton for optional resampling
         self.resample_check = tk.Checkbutton(self.optionframe, \
@@ -174,7 +172,7 @@ class MainWindow(object):
     def _next_image(self):
         '''
         Determines index for and returns a tkinter-compatible image object
-            the next image, resampling already-ranked images if resampling is
+            for the next image, resampling already-ranked images if resampling is
             enabled by the user.
 
         Returns:
