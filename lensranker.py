@@ -22,6 +22,7 @@ class MainWindow(object):
             imtype (string): file extension of images to be ranked
             outfile (string): filename of text file for saving data
         '''
+        os.system('xset r off')
         if path == '':
             self.path = os.getcwd()
             
@@ -50,6 +51,7 @@ class MainWindow(object):
         self.fullh = self.main.winfo_screenheight()
         self.zoomfac = (self.fullh - 275) / 456
         self._resamp = tk.BooleanVar()
+        self._go_back_one = False
         self._df = self._get_images()
         self.current_index = 0
         self.current_im = self._next_image()
@@ -84,14 +86,22 @@ class MainWindow(object):
         self.main.bind('<Left>', lambda event : self._gobackone())
 
         #sets up the go back one button    
-        self.button2 = tk.Button(self._frame, text = "←", font = ("Arial", 30), \
+        self.button2 = tk.Button(self._frame, text = "⇤", font = ("Arial", 30), \
                 command = self._gobackone)
         self.button2.grid(column = 0, row = 4, sticky = 'W')
+
+        #binds right arrow key to the going back one image    
+        self.main.bind('<Right>', lambda event : self._skiptofront())
+
+        #sets up the skip forward button    
+        self.button2 = tk.Button(self._frame, text = "↠", font = ("Arial", 30), \
+                command = self._skiptofront)
+        self.button2.grid(column = 2, row = 4, sticky = 'W')
 
         #sets up another frame object for holding other options (things like
         #   checkboxes and dropdowns which control backend functionality)
         self.optionframe = tk.Frame(self._frame)
-        self.optionframe.grid(column = 1, columnspan = 2, row = 4, \
+        self.optionframe.grid(column = 1, columnspan = 1, row = 4, \
                 sticky='NSEW')
 
         #sets up checkbutton for optional resampling
@@ -179,8 +189,12 @@ class MainWindow(object):
             img: tkinter-compatible image object
         '''
         randdec = np.random.rand()
-        
-        if randdec >= 0.9 and self._resamp.get() and self.current_index > 0:
+        if self._go_back_one:
+            return (self._make_image(self.path + \
+                    self._df.index[self.current_index]))
+
+        elif randdec >= 0.9 and self._resamp.get() and self.current_index > 0:
+            print('Resampling')
             randnum = np.random.randint(low = 0, high = self.current_index)
             self.current_index = randnum
             return (self._make_image(self.path + '/'+ \
@@ -203,23 +217,32 @@ class MainWindow(object):
             text = self._txt.get()
             if text == '':
                 text = '0'
-                   
-            if pd.isna(self._df.iloc[self.current_index].item()):
+                
+            if self._go_back_one:
+                self._df.iloc[self.current_index] = \
+                        self._df.iloc[self.current_index].item()[0:-1] + text
+                self._go_back_one = False
+                      
+            elif pd.isna(self._df.iloc[self.current_index].item()):
                 self._df.iloc[self.current_index] = text
+                
             else:
                 self._df.iloc[self.current_index] = \
                         str(self._df.iloc[self.current_index].item()) + \
                         '.' + text
+                        
             self._txt.delete(0, "end")
             self.save_file()
-
+            self._go_back_one = False
             self.current_im = self._next_image()
             self._canvas.itemconfig(self._image_on_canvas, \
                 image = self.current_im)
+                
         else:
             self._txt.delete(0, "end")
             tkinter.messagebox.showwarning("Error", \
                     "Invalid answer, please try again.")
+        
         
         
     def _gobackone(self):
@@ -227,20 +250,20 @@ class MainWindow(object):
         Changes current image to the previous (non-resampled) image
         in self._df.
         '''
-        self.current_index -= 1
-        self.current_im = self._make_image(self.path + \
-                self._df.index[self.current_index])
-        self._canvas.itemconfig(self._image_on_canvas, \
-                image = self.current_im)
+        if self.current_index != 0:
+            self._go_back_one = True
+            self.current_index -= 1
+            self.current_im = self._next_image()
+            self._canvas.itemconfig(self._image_on_canvas, \
+                    image = self.current_im)
 
 
-    def _goforwardone(self):
+    def _skiptofront(self):
         '''
         Changes current image to the next (non-resampled) image in self._df
         '''
-        self.current_index += 1
-        self.current_im = self._make_image(self.path + \
-                self._df.index[self.current_index])
+        self._go_back_one = False
+        self.current_im = self._next_image()
         self._canvas.itemconfig(self._image_on_canvas, \
                 image = self.current_im)
 
@@ -253,6 +276,7 @@ class MainWindow(object):
         if tkinter.messagebox.askokcancel("Quit", \
                 "Do you really wish to quit?"):
             self.save_file()
+            os.system('xset r on')
             self.main.destroy()
         
         
