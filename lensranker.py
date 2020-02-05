@@ -3,11 +3,12 @@ import tkinter.messagebox
 from PIL import ImageTk, Image
 import numpy as np
 import pandas as pd
+from io import StringIO
 import glob
 import argparse
 import os
 
-    
+
 class MainWindow(object):
     def __init__(self, main, path = '', imtype = 'jpg',
             outfile = 'lensrankings.txt'):
@@ -16,7 +17,7 @@ class MainWindow(object):
 
         Required Inputs:
             main (Tk): root to which the tkinter widgets are added
-        
+
         Optional Inputs:
             path (string): path to directory containing candidate images
             imtype (string): file extension of images to be ranked
@@ -25,27 +26,27 @@ class MainWindow(object):
         os.system('xset r off')
         if path == '':
             self.path = os.getcwd()
-            
+
         else:
             self.path = path
 
         if self.path[-1] != '/':
             self.path = self.path + '/'
-        
+
         self.imtype = imtype
         self.outfile = outfile
 
         #sets up main tk.Tk() object
         self.main = main
-        
+
         try:
             self.main.wm_state('zoomed')
         except:
             self.main.attributes('-zoomed', True)
-            
+
         self.main.title("Strong Lensing Ranker")
         self.main.configure(background = 'grey')
-        
+
         #sets useful attributes
         self.fullw = self.main.winfo_screenwidth()
         self.fullh = self.main.winfo_screenheight()
@@ -68,32 +69,32 @@ class MainWindow(object):
         self._frame = tk.Frame(self.main)
         self._frame.pack(side='bottom')
 
-        #sets up entry object for scoring    
+        #sets up entry object for scoring
         self._txt = tk.Entry(self._frame, font = ("Arial", 40), \
                 width = round(7 * self.zoomfac))
         self._txt.grid(column = 0,row = 2, sticky = 'W')
         self._txt.focus()
 
-        #binds the enter/return key to the score submitting function    
+        #binds the enter/return key to the score submitting function
         self.main.bind('<Return>', lambda event : self._submit())
 
-        #sets up submit button                                          
+        #sets up submit button
         self.button1 = tk.Button(self._frame, text = "submit", font = \
                 ("Arial", 30), command = self._submit)
         self.button1.grid(column = 1, columnspan = 2, row = 2, sticky = 'NSEW')
 
-        #binds left arrow key to the going back one image    
+        #binds left arrow key to the going back one image
         self.main.bind('<Left>', lambda event : self._gobackone())
 
-        #sets up the go back one button    
-        self.button2 = tk.Button(self._frame, text = "⇤", font = ("Arial", 30), \
+        #sets up the go back one button
+        self.button2 = tk.Button(self._frame, text = "←", font = ("Arial bold", 30), \
                 command = self._gobackone)
         self.button2.grid(column = 0, row = 4, sticky = 'W')
 
-        #binds right arrow key to the going back one image    
+        #binds right arrow key to the going back one image
         self.main.bind('<Right>', lambda event : self._skiptofront())
 
-        #sets up the skip forward button    
+        #sets up the skip forward button
         self.button2 = tk.Button(self._frame, text = "↠", font = ("Arial", 30), \
                 command = self._skiptofront)
         self.button2.grid(column = 2, row = 4, sticky = 'W')
@@ -113,8 +114,8 @@ class MainWindow(object):
         #overwrites the usual exiting protocol with a user prompt to ensure no
         #   accidental exits occur
         self.main.protocol("WM_DELETE_WINDOW", self._callback)
-        
-        
+
+
     def _find_images(self):
         '''
         Finds and returns a list of images of self.imtype located at
@@ -124,10 +125,10 @@ class MainWindow(object):
             ims (list of strings): filenames
         '''
         ims = glob.glob(self.path + '*.' + self.imtype)
-        
+
         return ims
-        
-        
+
+
     def _get_images(self):
         '''
         Reads the save file at self.path/self.outfile; if no file at that
@@ -149,11 +150,11 @@ class MainWindow(object):
 
         save = open(self.outfile)
         images = (',Rank\n' + save.read().replace(' ', ','))
-        df = pd.read_csv(pd.compat.StringIO(images), index_col = 0, dtype = str)
-        
+        df = pd.read_csv(StringIO(images), index_col = 0, dtype = str)
+
         return df
-        
-    
+
+
     def _make_image(self, impath, rotate = False):
         '''
         Creates and returns a tkinter-compatible image object from image at
@@ -170,15 +171,15 @@ class MainWindow(object):
         img = Image.open(impath)
         img = img.resize((round(img.width * self.zoomfac), \
                 round(img.height * self.zoomfac)), Image.ANTIALIAS)
-                
+
         if rotate:
             rot_times = np.random.randint(low = 0, high = 3)
             img = img.rotate(90 * rot_times, expand = True)
         img = ImageTk.PhotoImage(img)
-        
+
         return img
-        
-        
+
+
     def _next_image(self):
         '''
         Determines index for and returns a tkinter-compatible image object
@@ -199,16 +200,16 @@ class MainWindow(object):
             self.current_index = randnum
             return (self._make_image(self.path + '/'+ \
                     self._df.index[self.current_index], rotate = True))
-                    
+
         elif pd.notna(self._df.iloc[self.current_index].item()):
             self.current_index += 1
             return self._next_image()
-            
-        else:      
+
+        else:
             return (self._make_image(self.path + \
                     self._df.index[self.current_index]))
-        
-        
+
+
     def _submit(self):
         '''
         Saves score for current image
@@ -217,34 +218,34 @@ class MainWindow(object):
             text = self._txt.get()
             if text == '':
                 text = '0'
-                
+
             if self._go_back_one:
                 self._df.iloc[self.current_index] = \
                         self._df.iloc[self.current_index].item()[0:-1] + text
                 self._go_back_one = False
-                      
+
             elif pd.isna(self._df.iloc[self.current_index].item()):
                 self._df.iloc[self.current_index] = text
-                
+
             else:
                 self._df.iloc[self.current_index] = \
                         str(self._df.iloc[self.current_index].item()) + \
                         '.' + text
-                        
+
             self._txt.delete(0, "end")
             self.save_file()
             self._go_back_one = False
             self.current_im = self._next_image()
             self._canvas.itemconfig(self._image_on_canvas, \
                 image = self.current_im)
-                
+
         else:
             self._txt.delete(0, "end")
             tkinter.messagebox.showwarning("Error", \
                     "Invalid answer, please try again.")
-        
-        
-        
+
+
+
     def _gobackone(self):
         '''
         Changes current image to the previous (non-resampled) image
@@ -278,8 +279,8 @@ class MainWindow(object):
             self.save_file()
             os.system('xset r on')
             self.main.destroy()
-        
-        
+
+
     def save_file(self):
         '''
         Saves current dataframe into path/outfile.txt
@@ -287,15 +288,15 @@ class MainWindow(object):
         save = open(self.outfile, 'w')
         save.write(self._df.to_csv().replace(',', ' ')[6:])
         save.close()
-        
-        
+
+
     def execute(self):
         '''
         Displays main window to user, activates bindings
         '''
         self.main.mainloop()
 
-    
+
 if __name__ == '__main__':
     ### Read Arguments
     # Set up argument parser - Generic parameters
@@ -311,18 +312,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     arglist=vars(args)
-    
+
     if arglist['path'] == '':
         path = os.getcwd()
     else:
         path = arglist['path']
-        
+
     if path[-1] != '/':
         path = path + '/'
-        
+
     imtype = arglist['imtype']
-    
+
     outfile = arglist['filename']
-    
+
     MainWindow(tk.Tk(), path = path, imtype = imtype, \
             outfile = outfile).execute()
