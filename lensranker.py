@@ -54,7 +54,7 @@ class MainWindow(object):
         self._resamp = tk.BooleanVar()
         self._go_back_one = False
         self._df = self._get_images()
-        self.current_index = 0
+        self.current_index = pd.isnull(self._df).any(1).to_numpy().nonzero()[0][0]
         self.current_im = self._next_image()
 
         #sets up canvas object for displaying images and displays the first image
@@ -63,7 +63,7 @@ class MainWindow(object):
         self._image_on_canvas = self._canvas.create_image(self.fullw // 2, \
                 self.fullh//2 - 130, anchor = 'center', image = self.current_im)
         self._canvas.pack(fill = 'both', anchor = 'center', side = 'top', \
-            expand = True)
+                expand = True)
 
         #sets up frame object for organizing buttons and other UI widgets
         self._frame = tk.Frame(self.main)
@@ -109,7 +109,14 @@ class MainWindow(object):
         self.resample_check = tk.Checkbutton(self.optionframe, \
                 text = 'resample', var = self._resamp, onvalue = True, \
                 offvalue = False, font = ('Arial', 15))
-        self.resample_check.pack(side = 'left', anchor = 'w', padx = 20)
+        self.resample_check.pack(side = 'right', anchor = 'w', padx = 20)
+
+        #sets up text display for showing current position in the images, the
+        #   number ranked already, and the name of the current image
+        self.current_position = tk.Label(self.optionframe, text = \
+        "current position: "+ str(self.current_index) + " out of " + \
+        str(len(self._df.index)), font = ("Arial", 15))
+        self.current_position.pack(side = 'right', anchor = 'w')
 
         #overwrites the usual exiting protocol with a user prompt to ensure no
         #   accidental exits occur
@@ -191,18 +198,24 @@ class MainWindow(object):
         '''
         randdec = np.random.rand()
         if self._go_back_one:
+            self.current_position.configure(text = "current position: "+ \
+                str(self.current_index) + " out of " + str(len(self._df.index)))
             return (self._make_image(self.path + \
                     self._df.index[self.current_index]))
 
         elif randdec >= 0.9 and self._resamp.get() and self.current_index > 0:
-            print('Resampling')
             randnum = np.random.randint(low = 0, high = self.current_index)
             self.current_index = randnum
+            self.current_position.configure(text = "current position: "+ \
+                str(self.current_index) + " out of " + str(len(self._df.index)))
             return (self._make_image(self.path + '/'+ \
                     self._df.index[self.current_index], rotate = True))
 
         elif pd.notna(self._df.iloc[self.current_index].item()):
-            self.current_index += 1
+            next_index = pd.isnull(self._df).any(1).to_numpy().nonzero()[0][0]
+            self.current_index = next_index
+            self.current_position.configure(text = "current position: "+ \
+                str(self.current_index) + " out of " + str(len(self._df.index)))
             return self._next_image()
 
         else:
