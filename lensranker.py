@@ -227,7 +227,7 @@ class MainWindow(object):
         '''
         Saves score for current image
         '''
-        if self._txt.get() in ['', '0','1','2','3']:
+        if self._txt.get() in ['', '0','1','2','3','4']:
             text = self._txt.get()
             if text == '':
                 text = '0'
@@ -307,7 +307,12 @@ class MainWindow(object):
         '''
         Displays main window to user, activates bindings
         '''
-        self.main.mainloop()
+        try:
+            self.main.mainloop()
+        except KeyboardInterrupt:
+            self.save_file()
+            os.system('xset r on')
+            self.main.destroy()
 
 
 if __name__ == '__main__':
