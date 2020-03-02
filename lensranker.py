@@ -1,6 +1,12 @@
-import tkinter as tk
-import tkinter.messagebox
-from PIL import ImageTk, Image
+# -*- coding: utf-8 -*-
+try:
+    import tkinter as tk
+    import tkinter.messagebox as messagebox
+except:
+    import Tkinter as tk
+    import tkMessageBox as messagebox
+from PIL import ImageTk, Image, ImageShow
+ImageShow.Viewer = "PNG"
 import numpy as np
 import pandas as pd
 from io import StringIO
@@ -54,8 +60,10 @@ class MainWindow(object):
         self._resamp = tk.BooleanVar()
         self._go_back_one = False
         self._df = self._get_images()
+        self.current_file = None
         self.current_index = pd.isnull(self._df).any(1).to_numpy().nonzero()[0][0]
         self.current_im = self._next_image()
+        self.img = None
 
         #sets up canvas object for displaying images and displays the first image
         self._canvas = tk.Canvas(self.main)
@@ -71,8 +79,8 @@ class MainWindow(object):
 
         #sets up entry object for scoring
         self._txt = tk.Entry(self._frame, font = ("Arial", 40), \
-                width = round(7 * self.zoomfac))
-        self._txt.grid(column = 0,row = 2, sticky = 'W')
+                width = int(round(7 * self.zoomfac)))
+        self._txt.grid(column = 0, columnspan = 2, row = 2, sticky = 'W')
         self._txt.focus()
 
         #binds the enter/return key to the score submitting function
@@ -81,13 +89,13 @@ class MainWindow(object):
         #sets up submit button
         self.button1 = tk.Button(self._frame, text = "submit", font = \
                 ("Arial", 30), command = self._submit)
-        self.button1.grid(column = 1, columnspan = 2, row = 2, sticky = 'NSEW')
+        self.button1.grid(column = 2, columnspan = 2, row = 2, sticky = 'NSEW')
 
         #binds left arrow key to the going back one image
         self.main.bind('<Left>', lambda event : self._gobackone())
 
         #sets up the go back one button
-        self.button2 = tk.Button(self._frame, text = "←", font = ("Arial bold", 30), \
+        self.button2 = tk.Button(self._frame, text = u"←", font = ("Arial bold", 30), \
                 command = self._gobackone)
         self.button2.grid(column = 0, row = 4, sticky = 'W')
 
@@ -95,28 +103,29 @@ class MainWindow(object):
         self.main.bind('<Right>', lambda event : self._skiptofront())
 
         #sets up the skip forward button
-        self.button2 = tk.Button(self._frame, text = "↠", font = ("Arial", 30), \
+        self.button2 = tk.Button(self._frame, text = u"↠", font = ("Arial", 30), \
                 command = self._skiptofront)
-        self.button2.grid(column = 2, row = 4, sticky = 'W')
+        self.button2.grid(column = 3, row = 4, sticky = 'E')
 
         #sets up another frame object for holding other options (things like
         #   checkboxes and dropdowns which control backend functionality)
         self.optionframe = tk.Frame(self._frame)
-        self.optionframe.grid(column = 1, columnspan = 1, row = 4, \
-                sticky='NSEW')
+        self.optionframe.grid(column = 1, columnspan = 2, row = 4, \
+                sticky='W')
 
         #sets up checkbutton for optional resampling
         self.resample_check = tk.Checkbutton(self.optionframe, \
                 text = 'resample', var = self._resamp, onvalue = True, \
                 offvalue = False, font = ('Arial', 15))
-        self.resample_check.pack(side = 'right', anchor = 'w', padx = 20)
+        self.resample_check.pack(side = 'left', anchor = 'center')
 
         #sets up text display for showing current position in the images, the
         #   number ranked already, and the name of the current image
         self.current_position = tk.Label(self.optionframe, text = \
-        "current position: "+ str(self.current_index) + " out of " + \
-        str(len(self._df.index)), font = ("Arial", 15))
-        self.current_position.pack(side = 'right', anchor = 'w')
+        self.current_file + ", current position: " + \
+                str(self.current_index + 1) + " out of " + \
+                str(len(self._df.index)), font = ("Arial", 15))
+        self.current_position.pack(side = 'left', anchor = 'center', padx = 20)
 
         #overwrites the usual exiting protocol with a user prompt to ensure no
         #   accidental exits occur
@@ -157,7 +166,10 @@ class MainWindow(object):
 
         save = open(self.outfile)
         images = (',Rank\n' + save.read().replace(' ', ','))
-        df = pd.read_csv(StringIO(images), index_col = 0, dtype = str)
+        try:
+            df = pd.read_csv(StringIO(images), index_col = 0, dtype = str)
+        except:
+            df = pd.read_csv(StringIO(unicode(images)), index_col = 0, dtype = str)
 
         return df
 
@@ -175,16 +187,18 @@ class MainWindow(object):
         Returns:
             img: tkinter-compatible image object
         '''
-        img = Image.open(impath)
-        img = img.resize((round(img.width * self.zoomfac), \
-                round(img.height * self.zoomfac)), Image.ANTIALIAS)
+        self.current_file = self._df.index[self.current_index]
+        self.img = Image.open(impath)
+        self.img = self.img.convert('RGB')
+        self.img = self.img.resize((int(round(self.img.width * self.zoomfac)), \
+                int(round(self.img.height * self.zoomfac))))
 
         if rotate:
             rot_times = np.random.randint(low = 0, high = 3)
-            img = img.rotate(90 * rot_times, expand = True)
-        img = ImageTk.PhotoImage(img)
+            self.img = self.img.rotate(90 * rot_times, expand = True)
+        self.img = ImageTk.PhotoImage(self.img)
 
-        return img
+        return self.img
 
 
     def _next_image(self):
@@ -198,24 +212,27 @@ class MainWindow(object):
         '''
         randdec = np.random.rand()
         if self._go_back_one:
-            self.current_position.configure(text = "current position: "+ \
-                str(self.current_index) + " out of " + str(len(self._df.index)))
+            self.current_position.configure(text = self.current_file + \
+                    ", current position: " + str(self.current_index + 1) + \
+                    " out of " + str(len(self._df.index)))
             return (self._make_image(self.path + \
                     self._df.index[self.current_index]))
 
         elif randdec >= 0.9 and self._resamp.get() and self.current_index > 0:
             randnum = np.random.randint(low = 0, high = self.current_index)
             self.current_index = randnum
-            self.current_position.configure(text = "current position: "+ \
-                str(self.current_index) + " out of " + str(len(self._df.index)))
+            self.current_position.configure(text = self.current_file + \
+                    ", current position: " + str(self.current_index + 1) + \
+                    " out of " + str(len(self._df.index)))
             return (self._make_image(self.path + '/'+ \
                     self._df.index[self.current_index], rotate = True))
 
         elif pd.notna(self._df.iloc[self.current_index].item()):
             next_index = pd.isnull(self._df).any(1).to_numpy().nonzero()[0][0]
             self.current_index = next_index
-            self.current_position.configure(text = "current position: "+ \
-                str(self.current_index) + " out of " + str(len(self._df.index)))
+            self.current_position.configure(text = self.current_file + \
+                    ", current position: " + str(self.current_index + 1) + \
+                    " out of " + str(len(self._df.index)))
             return self._next_image()
 
         else:
@@ -287,7 +304,7 @@ class MainWindow(object):
         Overwrites the (x) button's default functionality so that it asks the
         user before closing the application
         '''
-        if tkinter.messagebox.askokcancel("Quit", \
+        if messagebox.askokcancel("Quit", \
                 "Do you really wish to quit?"):
             self.save_file()
             os.system('xset r on')
@@ -324,7 +341,7 @@ if __name__ == '__main__':
             for the save file there)')
     parser.add_argument('-f', '--filename', default = 'lensrankings.txt', \
             type = str, help = 'file name for the .txt file (if no file of this \
-            name exists, one will be created')
+            name exists, one will be created)')
     parser.add_argument('--imtype', default = 'jpg', type = str, \
             help = 'image type to be loaded in')
 
