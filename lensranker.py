@@ -56,20 +56,20 @@ class MainWindow(object):
         #sets useful attributes
         self.fullw = self.main.winfo_screenwidth()
         self.fullh = self.main.winfo_screenheight()
-        self.zoomfac = (self.fullh - 275) / 456
+        self.zoomfac = (self.fullh - 275) / 400
         self._resamp = tk.BooleanVar()
         self._go_back_one = False
         self._df = self._get_images()
-        self.current_file = None
         self.current_index = pd.isnull(self._df).any(1).to_numpy().nonzero()[0][0]
         self.current_im = self._next_image()
+        self.current_file = self._df.index[self.current_index]
         self.img = None
 
         #sets up canvas object for displaying images and displays the first image
         self._canvas = tk.Canvas(self.main)
         self._canvas.configure(background = 'grey')
         self._image_on_canvas = self._canvas.create_image(self.fullw // 2, \
-                self.fullh//2 - 130, anchor = 'center', image = self.current_im)
+                self.fullh//2 - 175, anchor = 'center', image = self.current_im)
         self._canvas.pack(fill = 'both', anchor = 'center', side = 'top', \
                 expand = True)
 
@@ -79,7 +79,7 @@ class MainWindow(object):
 
         #sets up entry object for scoring
         self._txt = tk.Entry(self._frame, font = ("Arial", 40), \
-                width = int(round(7 * self.zoomfac)))
+                width = int(round(6 * self.zoomfac)))
         self._txt.grid(column = 0, columnspan = 2, row = 2, sticky = 'W')
         self._txt.focus()
 
@@ -187,7 +187,6 @@ class MainWindow(object):
         Returns:
             img: tkinter-compatible image object
         '''
-        self.current_file = self._df.index[self.current_index]
         self.img = Image.open(impath)
         self.img = self.img.convert('RGB')
         self.img = self.img.resize((int(round(self.img.width * self.zoomfac)), \
@@ -212,6 +211,7 @@ class MainWindow(object):
         '''
         randdec = np.random.rand()
         if self._go_back_one:
+            self.current_file = self._df.index[self.current_index]
             self.current_position.configure(text = self.current_file + \
                     ", current position: " + str(self.current_index + 1) + \
                     " out of " + str(len(self._df.index)))
@@ -221,6 +221,7 @@ class MainWindow(object):
         elif randdec >= 0.9 and self._resamp.get() and self.current_index > 0:
             randnum = np.random.randint(low = 0, high = self.current_index)
             self.current_index = randnum
+            self.current_file = self._df.index[self.current_index]
             self.current_position.configure(text = self.current_file + \
                     ", current position: " + str(self.current_index + 1) + \
                     " out of " + str(len(self._df.index)))
@@ -230,6 +231,7 @@ class MainWindow(object):
         elif pd.notna(self._df.iloc[self.current_index].item()):
             next_index = pd.isnull(self._df).any(1).to_numpy().nonzero()[0][0]
             self.current_index = next_index
+            self.current_file = self._df.index[self.current_index]
             self.current_position.configure(text = self.current_file + \
                     ", current position: " + str(self.current_index + 1) + \
                     " out of " + str(len(self._df.index)))
