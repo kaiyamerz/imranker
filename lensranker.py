@@ -273,7 +273,7 @@ class MainWindow(object):
 
         else:
             self._txt.delete(0, "end")
-            tkinter.messagebox.showwarning("Error", \
+            messagebox.showwarning("Error", \
                     "Invalid answer, please try again.")
 
 
